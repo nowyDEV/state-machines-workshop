@@ -18,7 +18,10 @@ function App() {
 
   const fetchCharacter = async () => {
     try {
-      const data = await getCharacter(getRandomId());
+      const data = await getCharacter(
+        getRandomId(),
+        Boolean(getRandomInt(-1, 1))
+      );
 
       setCharacterData(data);
     } catch {}
