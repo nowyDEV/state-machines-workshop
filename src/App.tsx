@@ -1,4 +1,6 @@
 import * as React from "react";
+import { createMachine } from "xstate";
+import { useMachine } from "@xstate/react";
 import { getRandomInt } from "./utils";
 import { getCharacter, CharacterResponse } from "./api";
 import {
@@ -15,54 +17,48 @@ const states = {
   hasLoaded: "loaded",
 } as const;
 
-type State = typeof states[keyof typeof states];
-
 enum Action {
   FETCH_IMG = "FETCH_IMG",
   FETCH_IMG_SUCCESS = "FETCH_IMG_SUCCESS",
   FETCH_IMG_ERROR = "FETCH_IMG_ERROR",
 }
 
-const transitions = {
-  [states.empty]: {
-    [Action.FETCH_IMG]: states.isLoading,
+const starWarsMachine = createMachine({
+  id: "star-wars-machine",
+  initial: states.empty,
+  states: {
+    [states.empty]: {
+      on: {
+        [Action.FETCH_IMG]: states.isLoading,
+      },
+    },
+    [states.isLoading]: {
+      on: {
+        [Action.FETCH_IMG_SUCCESS]: states.hasLoaded,
+        [Action.FETCH_IMG_ERROR]: states.hasError,
+      },
+    },
+    [states.hasLoaded]: {
+      on: {
+        [Action.FETCH_IMG]: states.isLoading,
+      },
+    },
+    [states.hasError]: {
+      on: {
+        [Action.FETCH_IMG]: states.isLoading,
+      },
+    },
   },
-  [states.isLoading]: {
-    [Action.FETCH_IMG_SUCCESS]: states.hasLoaded,
-    [Action.FETCH_IMG_ERROR]: states.hasError,
-  },
-  [states.hasLoaded]: {
-    [Action.FETCH_IMG]: states.isLoading,
-  },
-  [states.hasError]: {
-    [Action.FETCH_IMG]: states.isLoading,
-  },
-};
-
-function transition<T extends State>(
-  currentState: T,
-  action: keyof typeof transitions[T]
-) {
-  const nextState = transitions[currentState][action];
-
-  return nextState ?? currentState;
-}
+});
 
 function App() {
-  const [currentState, setCurrentState] = React.useState<State>(states.empty);
-
-  const updateState = (action: Action) => {
-    // @ts-expect-error we omit additional guards & conditional logic here, there is an escape hatch in `return nextState ?? currentState` if we pass unsupported action
-    setCurrentState((prevState) => transition(prevState, action));
-  };
-
-  const isCurrentState = (state: State) => currentState === state;
+  const [currentMachine, send] = useMachine(starWarsMachine);
 
   const [characterData, setCharacterData] =
     React.useState<CharacterResponse | null>(null);
 
   const fetchCharacter = async () => {
-    updateState(Action.FETCH_IMG);
+    send(Action.FETCH_IMG);
 
     try {
       const data = await getCharacter(
@@ -71,14 +67,14 @@ function App() {
       );
 
       setCharacterData(data);
-      updateState(Action.FETCH_IMG_SUCCESS);
+      send(Action.FETCH_IMG_SUCCESS);
     } catch {
-      updateState(Action.FETCH_IMG_ERROR);
+      send(Action.FETCH_IMG_ERROR);
     }
   };
 
   const hasData = characterData != null;
-  const showPlaceholder = !isCurrentState(states.hasLoaded);
+  const showPlaceholder = !currentMachine.matches(states.hasLoaded);
 
   return (
     <div className="App">
@@ -86,22 +82,22 @@ function App() {
         {showPlaceholder && (
           <CharacterPlaceholder
             status={getStatus({
-              isLoading: isCurrentState(states.isLoading),
-              isEmpty: isCurrentState(states.empty),
-              hasError: isCurrentState(states.hasError),
+              isLoading: currentMachine.matches(states.isLoading),
+              isEmpty: currentMachine.matches(states.empty),
+              hasError: currentMachine.matches(states.hasError),
             })}
           />
         )}
 
-        {isCurrentState(states.empty) && (
+        {currentMachine.matches(states.empty) && (
           <p>No data available, fetch your character!</p>
         )}
 
-        {isCurrentState(states.hasError) && (
+        {currentMachine.matches(states.hasError) && (
           <p style={{ color: "red" }}>There was an error :(</p>
         )}
 
-        {isCurrentState(states.hasLoaded) && hasData && (
+        {currentMachine.matches(states.hasLoaded) && hasData && (
           <CharacterDetails {...characterData} />
         )}
 
