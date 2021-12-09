@@ -19,6 +19,13 @@ export type CharacterResponse = {
   url: string;
 };
 
-export async function getCharacter(id: number): Promise<CharacterResponse> {
+export async function getCharacter(
+  id: number,
+  simulateError: boolean
+): Promise<CharacterResponse> {
+  if (simulateError) {
+    return new Promise((_, reject) => setTimeout(reject, 1500));
+  }
+
   return fetch(`${API_URL}/people/${id}`).then((res) => res.json());
 }

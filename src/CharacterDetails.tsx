@@ -27,7 +27,9 @@ export function CharacterDetails({
         display: "flex",
         flexFlow: "column wrap",
         width: "200px",
-        height: "200px",
+        height: "240px",
+        fontSize: "20px",
+        textAlign: "left",
       }}
     >
       <li>Name: {name}</li>
