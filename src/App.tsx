@@ -25,7 +25,7 @@ function App() {
   };
 
   const hasData = characterData != null;
-  const showPlaceholder = !hasData;
+  const showPlaceholder = !hasLoaded;
 
   return (
     <div className="App">
