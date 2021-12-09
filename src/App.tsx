@@ -8,19 +8,61 @@ import {
 } from "./CharacterDetails";
 import "./App.css";
 
+const states = {
+  empty: "empty",
+  isLoading: "loading",
+  hasError: "error",
+  hasLoaded: "loaded",
+} as const;
+
+type State = typeof states[keyof typeof states];
+
+enum Action {
+  FETCH_IMG = "FETCH_IMG",
+  FETCH_IMG_SUCCESS = "FETCH_IMG_SUCCESS",
+  FETCH_IMG_ERROR = "FETCH_IMG_ERROR",
+}
+
+const transitions = {
+  [states.empty]: {
+    [Action.FETCH_IMG]: states.isLoading,
+  },
+  [states.isLoading]: {
+    [Action.FETCH_IMG_SUCCESS]: states.hasLoaded,
+    [Action.FETCH_IMG_ERROR]: states.hasError,
+  },
+  [states.hasLoaded]: {
+    [Action.FETCH_IMG]: states.isLoading,
+  },
+  [states.hasError]: {
+    [Action.FETCH_IMG]: states.isLoading,
+  },
+};
+
+function transition<T extends State>(
+  currentState: T,
+  action: keyof typeof transitions[T]
+) {
+  const nextState = transitions[currentState][action];
+
+  return nextState ?? currentState;
+}
+
 function App() {
-  const [isEmpty, setIsEmpty] = React.useState(true);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [hasLoaded, setHasLoaded] = React.useState(false);
-  const [hasError, setHasError] = React.useState(false);
+  const [currentState, setCurrentState] = React.useState<State>(states.empty);
+
+  const updateState = (action: Action) => {
+    // @ts-expect-error we omit additional guards & conditional logic here, there is an escape hatch in `return nextState ?? currentState` if we pass unsupported action
+    setCurrentState((prevState) => transition(prevState, action));
+  };
+
+  const isCurrentState = (state: State) => currentState === state;
+
   const [characterData, setCharacterData] =
     React.useState<CharacterResponse | null>(null);
 
   const fetchCharacter = async () => {
-    setIsLoading(true);
-    setIsEmpty(false);
-    setHasError(false);
-    setHasLoaded(false);
+    updateState(Action.FETCH_IMG);
 
     try {
       const data = await getCharacter(
@@ -29,31 +71,39 @@ function App() {
       );
 
       setCharacterData(data);
-      setHasLoaded(true);
+      updateState(Action.FETCH_IMG_SUCCESS);
     } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
+      updateState(Action.FETCH_IMG_ERROR);
     }
   };
 
   const hasData = characterData != null;
-  const showPlaceholder = !hasLoaded;
+  const showPlaceholder = !isCurrentState(states.hasLoaded);
 
   return (
     <div className="App">
       <header className="App-header">
         {showPlaceholder && (
           <CharacterPlaceholder
-            status={getStatus({ isLoading, isEmpty, hasError })}
+            status={getStatus({
+              isLoading: isCurrentState(states.isLoading),
+              isEmpty: isCurrentState(states.empty),
+              hasError: isCurrentState(states.hasError),
+            })}
           />
         )}
 
-        {isEmpty && <p>No data available, fetch your character!</p>}
+        {isCurrentState(states.empty) && (
+          <p>No data available, fetch your character!</p>
+        )}
 
-        {hasError && <p style={{ color: "red" }}>There was an error :(</p>}
+        {isCurrentState(states.hasError) && (
+          <p style={{ color: "red" }}>There was an error :(</p>
+        )}
 
-        {hasLoaded && hasData && <CharacterDetails {...characterData} />}
+        {isCurrentState(states.hasLoaded) && hasData && (
+          <CharacterDetails {...characterData} />
+        )}
 
         <p>
           <button onClick={fetchCharacter}>Fetch character</button>
