@@ -5,10 +5,10 @@
 - Usage of many boolean flags in the code greatly increases complexity (Combinatorial explosion)
 - The code is prone to errors and difficult to reason about & test
 - There is no control over transitions between various states of the component
-- **State machine** pattern can be useful to solve those cases
+- **State machine** pattern can be useful to solve those problems
 - There are many libraries that implement this pattern e.g.
   - [XState](https://xstate.js.org/) -> most popular one, well maintained & documented
-  - [Robot]](https://thisrobot.life/) -> small & functional alternative
+  - [Robot](https://thisrobot.life/) -> small & functional alternative
 
 ## Additional resources
 
