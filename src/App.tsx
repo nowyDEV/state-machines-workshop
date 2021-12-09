@@ -1,5 +1,5 @@
 import * as React from "react";
-import { createMachine } from "xstate";
+import { assign, createMachine } from "xstate";
 import { useMachine } from "@xstate/react";
 import { getRandomInt } from "./utils";
 import { getCharacter, CharacterResponse } from "./api";
@@ -23,9 +23,16 @@ enum Action {
   FETCH_IMG_ERROR = "FETCH_IMG_ERROR",
 }
 
-const starWarsMachine = createMachine({
+type StarWarsMachineContext = {
+  characterData: CharacterResponse | null;
+};
+
+const starWarsMachine = createMachine<StarWarsMachineContext>({
   id: "star-wars-machine",
   initial: states.empty,
+  context: {
+    characterData: null,
+  },
   states: {
     [states.empty]: {
       on: {
@@ -34,7 +41,12 @@ const starWarsMachine = createMachine({
     },
     [states.isLoading]: {
       on: {
-        [Action.FETCH_IMG_SUCCESS]: states.hasLoaded,
+        [Action.FETCH_IMG_SUCCESS]: {
+          target: states.hasLoaded,
+          actions: assign({
+            characterData: (_, event) => event.characterData,
+          }),
+        },
         [Action.FETCH_IMG_ERROR]: states.hasError,
       },
     },
@@ -54,9 +66,6 @@ const starWarsMachine = createMachine({
 function App() {
   const [currentMachine, send] = useMachine(starWarsMachine);
 
-  const [characterData, setCharacterData] =
-    React.useState<CharacterResponse | null>(null);
-
   const fetchCharacter = async () => {
     send(Action.FETCH_IMG);
 
@@ -66,14 +75,12 @@ function App() {
         Boolean(getRandomInt(-1, 1))
       );
 
-      setCharacterData(data);
-      send(Action.FETCH_IMG_SUCCESS);
+      send(Action.FETCH_IMG_SUCCESS, { characterData: data });
     } catch {
       send(Action.FETCH_IMG_ERROR);
     }
   };
 
-  const hasData = characterData != null;
   const showPlaceholder = !currentMachine.matches(states.hasLoaded);
 
   return (
@@ -97,9 +104,10 @@ function App() {
           <p style={{ color: "red" }}>There was an error :(</p>
         )}
 
-        {currentMachine.matches(states.hasLoaded) && hasData && (
-          <CharacterDetails {...characterData} />
-        )}
+        {currentMachine.matches(states.hasLoaded) &&
+          currentMachine.context.characterData != null && (
+            <CharacterDetails {...currentMachine.context.characterData} />
+          )}
 
         <p>
           <button onClick={fetchCharacter}>Fetch character</button>
