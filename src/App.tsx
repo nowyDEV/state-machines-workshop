@@ -36,7 +36,10 @@ const starWarsMachine = createMachine<StarWarsMachineContext>({
   states: {
     [states.empty]: {
       on: {
-        [Action.FETCH_IMG]: states.isLoading,
+        [Action.FETCH_IMG]: {
+          target: states.isLoading,
+          cond: (_, event) => event.isReady,
+        },
       },
     },
     [states.isLoading]: {
@@ -65,9 +68,10 @@ const starWarsMachine = createMachine<StarWarsMachineContext>({
 
 function App() {
   const [currentMachine, send] = useMachine(starWarsMachine);
+  const [isReady, setIsReady] = React.useState(false);
 
   const fetchCharacter = async () => {
-    send(Action.FETCH_IMG);
+    send(Action.FETCH_IMG, { isReady });
 
     try {
       const data = await getCharacter(
@@ -108,6 +112,16 @@ function App() {
           currentMachine.context.characterData != null && (
             <CharacterDetails {...currentMachine.context.characterData} />
           )}
+
+        <label htmlFor="is-ready" style={{ fontSize: "14px" }}>
+          <input
+            type="checkbox"
+            id="is-ready"
+            checked={isReady}
+            onChange={(e) => setIsReady(e.target.checked)}
+          />
+          Fetch enabled
+        </label>
 
         <p>
           <button onClick={fetchCharacter}>Fetch character</button>
