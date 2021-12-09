@@ -17,6 +17,11 @@ function App() {
     React.useState<CharacterResponse | null>(null);
 
   const fetchCharacter = async () => {
+    setIsLoading(true);
+    setIsEmpty(false);
+    setHasError(false);
+    setHasLoaded(false);
+
     try {
       const data = await getCharacter(
         getRandomId(),
@@ -24,7 +29,12 @@ function App() {
       );
 
       setCharacterData(data);
-    } catch {}
+      setHasLoaded(true);
+    } catch {
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const hasData = characterData != null;
